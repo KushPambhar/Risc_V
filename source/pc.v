@@ -1,3 +1,5 @@
+// 32-bits wide PC
+
 module pc(next_pc, clk, reset, pc_out);
     input [31:0]next_pc;
     input clk,reset;
