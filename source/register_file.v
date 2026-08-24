@@ -1,3 +1,5 @@
+//32 General Purpose Reg. each 32 bits wide.
+
 module reg_file(clk, rs1, rs2, rd, write , read_1, read_2 , regWrite);
     input clk, regWrite;
     input [4:0] rs1,rs2,rd;
