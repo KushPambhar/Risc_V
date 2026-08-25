@@ -9,6 +9,7 @@ module immgen(instruction,offset);
             7'b0010011 : offset ={{20{instruction[31]}},instruction[31:20]}; // I type (Immediate Type instr.)
             7'b0100011 : offset = {{20{instruction[31]}}, instruction[31:25], instruction[11:7]}; // S Type
             7'b1100111 : offset = {{20{instruction[31]}}, instruction[31], instruction[7], instruction[30:25], instruction[11:8]}; // SB Type
+            7'b0110111 : offset = {{12{instruction[31]}}, instruction[31:12]}; // LUI
             default : offset = 32'b0; 
         endcase
     end
