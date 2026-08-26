@@ -55,7 +55,7 @@ module control(
                 MemtoReg  = 1'b0;
                 ALUSrcA   = 1'b0;
                 ALUSrcB   = 2'b00;
-                ALUOp     = 2'b00;    // subtract/compare
+                ALUOp     = 2'b01;    // subtract/compare
             end
 
             // ---------------- I-TYPE ALU: ADDI/SLTI/.../SRAI ----------------
@@ -67,7 +67,7 @@ module control(
                 MemtoReg  = 1'b0;
                 ALUSrcA   = 1'b1;
                 ALUSrcB   = 2'b00;
-                ALUOp     = 2'b00;
+                ALUOp     = 2'b11;
             end
 
             // ---------------- R-TYPE ALU: ADD/SUB/.../AND ----------------
@@ -79,7 +79,7 @@ module control(
                 MemtoReg  = 1'b0
                 ALUSrcA   = 1'b0;
                 ALUSrcB   = 2'b00;
-                ALUOp     = 2'b00;
+                ALUOp     = 2'b10;
             end
 
             // ---------------- LUI ----------------
