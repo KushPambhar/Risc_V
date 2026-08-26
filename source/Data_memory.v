@@ -7,7 +7,7 @@ module data_mem(data_address,clk,write_data, Read_data, MemRead, MemWrite);
     reg [7:0] mem [0:1023];
     initial $readmemh("dmem.hex", mem);
     wire [9:0]add;
-    assign wire = data_address[9:0];
+    assign add = data_address[9:0];
     always@(*) begin 
         Read_data = 32'b0;
         if(MemRead) begin
