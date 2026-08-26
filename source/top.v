@@ -48,7 +48,7 @@ module top(input clk, input reset);
 
     ALUControl(AluOP,Instruction[14:12],Imm_Gen_Out[30],ALUControlOut);
 
-    ALU(SrcAOut,SrcBOut, AluOut, zero, lt, ltu);
+    ALU(SrcAOut,SrcBOut,AluControlOut, AluOut, zero, lt, ltu);
 
     branch_logic(Instruction[14:12],zero,lt,ltu,branch_taken);
 
