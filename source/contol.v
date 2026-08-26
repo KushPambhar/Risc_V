@@ -76,7 +76,7 @@ module control(
                 MemWrite  = 1'b0;
                 Branch    = 1'b0;
                 MemRead   = 1'b0;
-                MemtoReg  = 1'b0
+                MemtoReg  = 1'b0;
                 ALUSrcA   = 1'b0;
                 ALUSrcB   = 2'b00;
                 ALUOp     = 2'b10;
