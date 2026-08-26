@@ -4,12 +4,21 @@ module ALUControl (
     input        funct7_5,     // bit 30 of instruction (funct7[5])
     output reg [3:0] ALUControl
 );
-
     always @(*) begin
         case (ALUOp)
             2'b00: ALUControl = 4'b0000;  // LW/SW/JALR -> ADD
 
-            2'b01: ALUControl = 4'b0001;  // Branch -> SUB (compare)
+            2'b01: begin // Branch -> depends on funct3
+                case (funct3)
+                    3'b000: ALUControl = 4'b0001; // BEQ  -> SUB (uses Zero)
+                    3'b001: ALUControl = 4'b0001; // BNE  -> SUB (uses Zero)
+                    3'b100: ALUControl = 4'b1000; // BLT  -> SLT (uses LT)
+                    3'b101: ALUControl = 4'b1000; // BGE  -> SLT (uses LT)
+                    3'b110: ALUControl = 4'b1001; // BLTU -> SLTU (uses LTU)
+                    3'b111: ALUControl = 4'b1001; // BGEU -> SLTU (uses LTU)
+                    default: ALUControl = 4'b0001; // safe default: SUB
+                endcase
+            end
 
             2'b10: begin // R-type: use funct3 + funct7
                 case (funct3)
@@ -42,5 +51,4 @@ module ALUControl (
             default: ALUControl = 4'b0000;
         endcase
     end
-
 endmodule
