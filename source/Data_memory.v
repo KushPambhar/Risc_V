@@ -1,4 +1,4 @@
-module data_mod(data_address,clk,write_data, Read_data, MemRead, MemWrite);
+module data_mem(data_address,clk,write_data, Read_data, MemRead, MemWrite);
     input [31:0] data_address, write_data;
     input MemRead,MemWrite,clk;
     output reg [31:0] Read_data;
