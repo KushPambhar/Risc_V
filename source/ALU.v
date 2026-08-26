@@ -3,6 +3,9 @@ module ALU (
     input  [3:0]  ALUControl,  // operation selector from ALU Control unit
     output reg [31:0] Result,
     output        Zero         // for branches (BEQ/BNE)
+    output        LT,          // NEW: signed less-than, for BLT/BGE
+    output        LTU          // NEW: unsigned less-than, for BLTU/BGEU
+
 );
 
     always @(*) begin
@@ -23,5 +26,8 @@ module ALU (
     end
 
     assign Zero = (Result == 32'b0);  // used by BEQ/BNE
+    assign LT   = ($signed(A) < $signed(B));  // NEW: always computed, for BLT/BGE
+    assign LTU  = (A < B);                     // NEW: always computed, for BLTU/BGEU
+
 
 endmodule
