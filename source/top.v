@@ -1,5 +1,3 @@
-
-
 module top(input clk, input reset);
     wire [31:0] pc_in, pc_out;
 
@@ -30,35 +28,35 @@ module top(input clk, input reset);
 
     wire [31:0] WriteData;
 
-    pc(pc_in, clk, reset, pc_out);
+    pc pc_inst(pc_in, clk, reset, pc_out);
 
-    inst_mem(pc_out, Instruction);
+    inst_mem imem_inst(pc_out, Instruction);
 
-    reg_file(clk,Instruction[19:15],Instruction[24:20],Instruction[11:7],WriteData,ReadData1,ReadData2,RegWrite)
+    reg_file rf_inst(clk,Instruction[19:15],Instruction[24:20],Instruction[11:7],WriteData,ReadData1,ReadData2,RegWrite);
 
-    immgen(Instruction,Imm_Gen_Out);
+    immgen immgen_inst(Instruction,Imm_Gen_Out);
 
-    control(Instruction[6:0],RegWrite,MemWrite,MemRead,MemtoReg,Branch,AluSrcB,AluSrcA,AluOP);
+    control control_inst(Instruction[6:0],RegWrite,MemWrite,MemRead,MemtoReg,Branch,AluSrcB,AluSrcA,AluOP);
 
-    adder a1(pc_out,32'b4,pc_next);
+    adder a1(pc_out,32'd4,pc_next);
     adder a2(pc_out,Imm_Gen_Out,pc_branch);
 
-    mux_4x1(ReadData1,32'b0, pc_out, 32'b0, AluSrcA ,SrcAOut);
-    mux_2x1(ReadData2,Imm_Gen_Out, AluSrcB ,SrcBOut);
+    mux_4x1 mux4_srcA(ReadData1,32'b0, pc_out, 32'b0, AluSrcA ,SrcAOut);
+    mux_2x1 mux2_srcB(ReadData2,Imm_Gen_Out, AluSrcB ,SrcBOut);
 
-    ALUControl(AluOP,Instruction[14:12],Imm_Gen_Out[30],ALUControlOut);
+    ALUControl alu_ctrl_inst(AluOP,Instruction[14:12],Instruction[30],AluControlOut);
 
-    ALU(SrcAOut,SrcBOut,AluControlOut, AluOut, zero, lt, ltu);
+    ALU alu_inst(SrcAOut,SrcBOut,AluControlOut, AluOut, zero, lt, ltu);
 
-    branch_logic(Instruction[14:12],zero,lt,ltu,branch_taken);
+    branch_logic branch_inst(Instruction[14:12],zero,lt,ltu,branch_taken);
 
     assign branch_and = branch_taken & Branch;
 
-    mux_2x1(pc_next,pc_branch,branch_and, pc_in);
+    mux_2x1 mux2_pcsel(pc_next,pc_branch,branch_and, pc_in);
 
-    data_mem(AluOut,clk,ReadData2,DataMemoryOut,MemRead,MemWrite);
+    data_mem dmem_inst(AluOut,clk,ReadData2,DataMemoryOut,MemRead,MemWrite);
 
-    mux_2x1(AluOut,DataMemoryOut,MemtoReg,WriteData);
+    mux_2x1 mux2_wb(AluOut,DataMemoryOut,MemtoReg,WriteData);
 
  
 endmodule
