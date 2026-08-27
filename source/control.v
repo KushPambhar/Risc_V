@@ -2,8 +2,8 @@ module control(
     input      [6:0] opcode,
     output reg RegWrite,
     output reg MemWrite,
-    output reg MemRead
-    output reg MemtoReg
+    output reg MemRead,
+    output reg MemtoReg,
     output reg Branch,
     output reg  ALUSrcA,      // 0 = rs2, 1 = immediate  -> ALU input B
     output reg [1:0] ALUSrcB,     // 0 = rs1, 1 = PC, 2 = 0   -> ALU input A
