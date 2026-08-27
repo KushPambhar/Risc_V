@@ -2,7 +2,7 @@ module ALU (
     input  [31:0] A, B,        // operands (rs1, rs2/imm)
     input  [3:0]  ALUControl,  // operation selector from ALU Control unit
     output reg [31:0] Result,
-    output        Zero         // for branches (BEQ/BNE)
+    output        Zero,         // for branches (BEQ/BNE)
     output        LT,          // NEW: signed less-than, for BLT/BGE
     output        LTU          // NEW: unsigned less-than, for BLTU/BGEU
 
