@@ -1,62 +1,156 @@
 module top(input clk, input reset);
     wire [31:0] pc_in, pc_out;
-
     wire [31:0] Instruction;
+    wire [31:0] pc_next;
+    wire PcWrite;
+
+    wire [31:0] pc_if_id, pc_next_if_id, Instruction_if_id;
+    wire IF_ID_Write;
+    wire stall_hazard;
 
     wire Branch, MemRead, MemtoReg, MemWrite, AluSrcB, RegWrite;
     wire [1:0] AluOP, AluSrcA;
-
     wire [31:0] ReadData1, ReadData2;
-
     wire [31:0] Imm_Gen_Out;
 
+    // Added After Forwarding Implentation this is the signal after deciding whether stall is there or not
+    wire RegWrite_gated, MemWrite_gated, MemRead_gated;
+    wire MemtoReg_gated, Branch_gated, AluSrcB_gated;
+    wire [1:0] AluSrcA_gated, AluOP_gated;
+
+
+    wire [31:0] pc_id_ex, pc_next_id_ex, Instruction_id_ex;
+    wire [31:0] ReadData1_id_ex, ReadData2_id_ex, Imm_Gen_Out_id_ex;
+    wire [1:0] AluOP_id_ex, AluSrcA_id_ex;
+    wire Branch_id_ex, MemRead_id_ex, MemtoReg_id_ex, MemWrite_id_ex, AluSrcB_id_ex, RegWrite_id_ex;
+
+    wire [1:0] forward_a, forward_b;
+    wire [31:0] ReadData1_fwd_a, ReadData2_fwd_b;
+
     wire [3:0] AluControlOut;
-
     wire [31:0] SrcAOut, SrcBOut;
-
     wire [31:0] AluOut;
     wire zero, lt, ltu;
 
+    wire [31:0] pc_ex_mem, pc_next_ex_mem, Instruction_ex_mem;
+    wire [31:0]  ReadData2_ex_mem;
+    wire Branch_ex_mem, MemRead_ex_mem, MemWrite_ex_mem ;
+    wire RegWrite_ex_mem, MemtoReg_ex_mem ;
+    wire [31:0] pc_branch_ex_mem, AluOut_ex_mem;
+    wire zero_ex_mem, lt_ex_mem, ltu_ex_mem;
+
     wire branch_taken;
-
     wire branch_and;
-
-    wire [31:0] pc_branch;
-    wire [31:0] pc_next;
-
+    wire flush_on_not_taken;
+    wire [31:0] pc_branch_add;
     wire [31:0] DataMemoryOut;
+
+    wire [31:0] Instruction_mem_wb;
+    wire RegWrite_mem_wb, MemtoReg_mem_wb;
+    wire [31:0] AluOut_mem_wb, DataMemoryOut_mem_wb;
 
     wire [31:0] WriteData;
 
-    pc pc_inst(pc_in, clk, reset, pc_out);
+    //IF
+    wire [31:0] pc_temp;
+    mux_2x1 mux2_pcsel(pc_next,pc_branch_add, Branch, pc_temp);
+    mux_2x1 mux2_pc_NT(pc_temp,pc_next_ex_mem, flush_on_not_taken , pc_in);
 
+    pc pc_inst(pc_in, clk, reset, PcWrite, pc_out);
     inst_mem imem_inst(pc_out, Instruction);
-
-    reg_file rf_inst(clk,Instruction[19:15],Instruction[24:20],Instruction[11:7],WriteData,ReadData1,ReadData2,RegWrite);
-
-    immgen immgen_inst(Instruction,Imm_Gen_Out);
-
-    control control_inst(Instruction[6:0],RegWrite,MemWrite,MemRead,MemtoReg,Branch,AluSrcB,AluSrcA,AluOP);
-
     adder a1(pc_out,32'd4,pc_next);
-    adder a2(pc_out,Imm_Gen_Out,pc_branch);
+    
+    //IF_ID
+    wire if_id_reset = reset||flush_on_not_taken; // If you want to add Further Reset Setting, you may use this;
+    wire IF_ID_Write_new = IF_ID_Write && (~flush_on_not_taken); // If you want to add Further Reset Setting, you may use this;
+    IF_ID if_id(clk, if_id_reset, pc_out, pc_next,Instruction,IF_ID_Write_new,pc_if_id, pc_next_if_id, Instruction_if_id);
 
-    mux_4x1 mux4_srcA(ReadData1,32'b0, pc_out, 32'b0, AluSrcA ,SrcAOut);
-    mux_2x1 mux2_srcB(ReadData2,Imm_Gen_Out, AluSrcB ,SrcBOut);
+    //Hazard-detection
+    hazard_detection hazard_inst(Instruction_if_id[19:15],Instruction_if_id[24:20],Instruction_id_ex[11:7],MemRead_id_ex,PcWrite,IF_ID_Write,stall_hazard);
+    
+    //ID
+    reg_file rf_inst(clk,Instruction_if_id[19:15],Instruction_if_id[24:20],Instruction_mem_wb[11:7],WriteData,ReadData1,ReadData2,RegWrite_mem_wb); 
+    immgen immgen_inst(Instruction_if_id,Imm_Gen_Out);
+    control control_inst(Instruction_if_id[6:0],RegWrite,MemWrite,MemRead,MemtoReg,Branch,AluSrcB,AluSrcA,AluOP);
+    
+    adder a2(pc_if_id,Imm_Gen_Out,pc_branch_add);
 
-    ALUControl alu_ctrl_inst(AluOP,Instruction[14:12],Instruction[30],AluControlOut);
+    // 
+    wire stall = stall_hazard || flush_on_not_taken;
+    //control_mux
+    assign RegWrite_gated = stall ? 1'b0 : RegWrite;
+    assign MemWrite_gated = stall ? 1'b0 : MemWrite;   
+    assign MemRead_gated  = stall ? 1'b0 : MemRead;
+    assign MemtoReg_gated = stall ? 1'b0 : MemtoReg;
+    assign Branch_gated   = stall ? 1'b0 : Branch;
+    assign AluSrcB_gated  = stall ? 1'b0 : AluSrcB;
+    assign AluSrcA_gated  = stall ? 2'b0 : AluSrcA;
+    assign AluOP_gated    = stall ? 2'b0 : AluOP;
 
+
+    //ID_EX
+    wire id_ex_reset = reset||flush_on_not_taken;
+    ID_EX id_ex(clk, id_ex_reset,
+        pc_if_id, pc_next_if_id, Instruction_if_id,
+        ReadData1,ReadData2,Imm_Gen_Out,
+        AluOP_gated, AluSrcA_gated,AluSrcB_gated,
+        Branch_gated,MemRead_gated,MemWrite_gated,
+        RegWrite_gated,MemtoReg_gated,
+
+        pc_id_ex, pc_next_id_ex, Instruction_id_ex,
+        ReadData1_id_ex, ReadData2_id_ex, Imm_Gen_Out_id_ex,
+        AluOP_id_ex, AluSrcA_id_ex, AluSrcB_id_ex,
+        Branch_id_ex, MemRead_id_ex,MemWrite_id_ex,
+        RegWrite_id_ex, MemtoReg_id_ex
+        );
+    
+    //EX
+    forwarding_unit fwd_unit(Instruction_id_ex[19:15],Instruction_id_ex[24:20],Instruction_ex_mem[11:7],Instruction_mem_wb[11:7],RegWrite_ex_mem,RegWrite_mem_wb,forward_a,forward_b);
+    
+    
+    mux_4x1 mux4_srcA(ReadData1_fwd_a,32'b0, pc_id_ex, 32'b0, AluSrcA_id_ex ,SrcAOut);
+    mux_2x1 mux2_srcB(ReadData2_fwd_b,Imm_Gen_Out_id_ex, AluSrcB_id_ex ,SrcBOut);
+    ALUControl alu_ctrl_inst(AluOP_id_ex,Instruction_id_ex[14:12],Instruction_id_ex[30],AluControlOut);
+
+    assign ReadData1_fwd_a = (forward_a == 2'b00) ? ReadData1_id_ex : (forward_a == 2'b01) ? AluOut_ex_mem : WriteData;
+    assign ReadData2_fwd_b = (forward_b == 2'b00) ? ReadData2_id_ex : (forward_b == 2'b01) ? AluOut_ex_mem : WriteData;
     ALU alu_inst(SrcAOut,SrcBOut,AluControlOut, AluOut, zero, lt, ltu);
 
-    branch_logic branch_inst(Instruction[14:12],zero,lt,ltu,branch_taken);
+    //EX_MEM
+    EX_MEM ex_mem(clk, reset,
+        pc_id_ex, pc_next_id_ex, Instruction_id_ex,
+        SrcBOut, //Later the name is changed to ReadData2_ex_mem but content is same.
+        Branch_id_ex, MemRead_id_ex,MemWrite_id_ex,
+        RegWrite_id_ex, MemtoReg_id_ex,
+        AluOut,zero,lt,ltu,
 
-    assign branch_and = branch_taken & Branch;
+        pc_ex_mem, pc_next_ex_mem, Instruction_ex_mem,
+        ReadData2_ex_mem,
+        Branch_ex_mem, MemRead_ex_mem, MemWrite_ex_mem,
+        RegWrite_ex_mem, MemtoReg_ex_mem,
+        AluOut_ex_mem,
+        zero_ex_mem, lt_ex_mem, ltu_ex_mem
+    );
 
-    mux_2x1 mux2_pcsel(pc_next,pc_branch,branch_and, pc_in);
+    // MEM
+    branch_logic branch_inst(Instruction_ex_mem[14:12],zero_ex_mem,lt_ex_mem,ltu_ex_mem,branch_taken);
+    assign branch_and = branch_taken & Branch_ex_mem;
+    // ctrl_NT(branch_and,flush_on_taken);
+    ctrl_T(branch_and,flush_on_not_taken);
+    
+    data_mem dmem_inst(AluOut_ex_mem,clk,ReadData2_ex_mem,DataMemoryOut,MemRead_ex_mem,MemWrite_ex_mem);
 
-    data_mem dmem_inst(AluOut,clk,ReadData2,DataMemoryOut,MemRead,MemWrite);
+    //MEM_WB
+    MEM_WB mem_wb(clk, reset, Instruction_ex_mem, 
+    RegWrite_ex_mem, MemtoReg_ex_mem,
+    AluOut_ex_mem,DataMemoryOut,
 
-    mux_2x1 mux2_wb(AluOut,DataMemoryOut,MemtoReg,WriteData);
+    Instruction_mem_wb,
+    RegWrite_mem_wb, MemtoReg_mem_wb,
+    AluOut_mem_wb, DataMemoryOut_mem_wb
+    );
+
+    mux_2x1 mux2_wb(AluOut_mem_wb,DataMemoryOut_mem_wb,MemtoReg_mem_wb,WriteData);
 
  
 endmodule
